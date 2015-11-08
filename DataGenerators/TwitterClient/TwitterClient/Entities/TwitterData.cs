@@ -17,6 +17,7 @@ using System.Net;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Security.Cryptography;
+using System.Security.Policy;
 using System.Text;
 
 namespace TwitterClient
@@ -39,12 +40,51 @@ namespace TwitterClient
         }
     }
 
+   
+
+    public class Url
+    {
+        public string url { get; set; }
+        public string expanded_url { get; set; }
+        public string display_url { get; set; }
+        public List<Int64> indices { get; set; }
+    }
+
+    public class UserMention
+    {
+        public string screen_name { get; set; }
+        public string name { get; set; }
+        public Int64 id { get; set; }
+        public string id_str { get; set; }
+        public List<Int64> indices { get; set; }
+    }
+
+    public class Hashtag
+    {
+        public string text { get; set; }
+        public List<Int64> indices { get; set; }
+    }
+
+    [DataContract]
+    public class Entities
+    {
+        [DataMember(Name = "hashtags")]     public List<Hashtag> hashtags;
+        [DataMember(Name = "trends")]       public List<object> trends;
+        [DataMember(Name = "urls")]         public List<Url> urls;
+        [DataMember(Name = "user_mentions")]public List<UserMention> user_mentions;
+        [DataMember(Name = "symbols")]      public List<object> symbols;
+        [DataMember(Name = "media")]        public List<object> media;
+
+    }
+
     [DataContract]
     public class TwitterUser
     {
+        [DataMember(Name = "id")]                      public Int64 Id; 
         [DataMember(Name = "time_zone")]               public string TimeZone;
         [DataMember(Name = "name")]                    public string Name;
         [DataMember(Name = "profile_image_url")]       public string ProfileImageUrl;
+        [DataMember(Name = "location")]                public string location;
     }
 
     [DataContract]
@@ -60,35 +100,42 @@ namespace TwitterClient
         [DataMember(Name = "source")]                  public string Source;
         [DataMember(Name = "retweet_count")]           public string RetweetCount;
         [DataMember(Name = "user")]                    public TwitterUser User;
+        [DataMember(Name = "entities")]                public Entities entities; 
         [DataMember(Name = "created_at")]              public string CreatedAt;
+        [DataMember(Name = "location")]                public string Location;
         [IgnoreDataMember]                             public string RawJson;
 
         public static IEnumerable<Tweet> StreamStatuses(TwitterConfig config)
         {
-            DataContractJsonSerializer jsonSerializer = new DataContractJsonSerializer(typeof(Tweet));
-
-            var streamReader = ReadTweets(config);
-
-            while (true)
+            try
             {
-                string line = null;
-                try { line = streamReader.ReadLine(); }
-                catch (Exception) { }
+                DataContractJsonSerializer jsonSerializer = new DataContractJsonSerializer(typeof(Tweet));
 
-                if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith("{\"delete\""))
-                {
-                    var result = (Tweet)jsonSerializer.ReadObject(new MemoryStream(Encoding.UTF8.GetBytes(line)));
-                    result.RawJson = line;
-                    yield return result;
-                }
+                var streamReader = ReadTweets(config);
 
-                // Oops the Twitter has ended... or more likely some error have occurred.
-                // Reconnect to the twitter feed.
-                if (line == null)
+                while (true)
                 {
-                    streamReader = ReadTweets(config);
+                    string line = null;
+                    try { line = streamReader.ReadLine(); }
+                    catch (Exception) { }
+
+                    if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith("{\"delete\""))
+                    {
+                        var result = (Tweet)jsonSerializer.ReadObject(new MemoryStream(Encoding.UTF8.GetBytes(line)));
+                        result.RawJson = line;
+                        yield return result;
+                    }
+
+                    // Oops the Twitter has ended... or more likely some error have occurred.
+                    // Reconnect to the twitter feed.
+                    if (line == null)
+                    {
+                        streamReader = ReadTweets(config);
+                    }
                 }
             }
+            finally
+            { }
         }
 
         static TextReader ReadTweets(TwitterConfig config)
@@ -181,12 +228,16 @@ namespace TwitterClient
         public string Language;
         public string Topic;
         public int SentimentScore;
+        public string Sentiment;
+        public string Location;
+        public TwitterUser user;
+        public string hashtag;
 
         public string RawJson;
 
         public override string ToString()
         {
-            return new { ID, CreatedAt, UserName, TimeZone, ProfileImageUrl, Text, Language, Topic, SentimentScore }.ToString();
+            return new { ID, CreatedAt, UserName, TimeZone, ProfileImageUrl, Text, Language, Topic, SentimentScore, user.location, Sentiment }.ToString();
         }
     }
 
@@ -195,10 +246,14 @@ namespace TwitterClient
         public DateTime CreatedAt;
         public string Topic;
         public int SentimentScore;
-                
+        public string Text;
+        public string Location;
+        public string sentiment;
+        public string ProfileImageUrl;
+        public string hashtags;
         public override string ToString()
         {
-            return new {  CreatedAt,  Topic, SentimentScore }.ToString();
+            return new { CreatedAt, Topic, SentimentScore, Text, Location, sentiment, ProfileImageUrl }.ToString();
         }
     }
 

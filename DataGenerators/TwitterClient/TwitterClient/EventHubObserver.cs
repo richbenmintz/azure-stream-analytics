@@ -25,8 +25,7 @@ namespace TwitterClient
     {
         private EventHubConfig _config;
         private EventHubClient _eventHubClient;
-       
-                
+    
         public EventHubObserver(EventHubConfig config)
         {
             try
@@ -45,10 +44,12 @@ namespace TwitterClient
         {
             try
             {
-
                 var serialisedString = JsonConvert.SerializeObject(TwitterPayloadData);
                 EventData data = new EventData(Encoding.UTF8.GetBytes(serialisedString)) { PartitionKey = TwitterPayloadData.Topic };
-                _eventHubClient.Send(data);
+                if (TwitterPayloadData.Topic.ToLower() != "unknown")
+                {
+                    _eventHubClient.Send(data);
+                }
                
                 
                 Console.ForegroundColor = ConsoleColor.Yellow;

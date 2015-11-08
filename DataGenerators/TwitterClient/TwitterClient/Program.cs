@@ -35,11 +35,14 @@ namespace TwitterClient
             config.ConnectionString = ConfigurationManager.AppSettings["EventHubConnectionString"];
             config.EventHubName = ConfigurationManager.AppSettings["EventHubName"];
             var myEventHubObserver = new EventHubObserver(config);
-
-            var datum = Tweet.StreamStatuses(new TwitterConfig(oauthToken, oauthTokenSecret, oauthCustomerKey, oauthConsumerSecret,
-                keywords)).Select(tweet => Sentiment.ComputeScore(tweet, keywords)).Select(tweet => new Payload { CreatedAt=tweet.CreatedAt,Topic =tweet.Topic ,SentimentScore =tweet.SentimentScore });
-
-            datum.ToObservable().Subscribe(myEventHubObserver);
+            try
+            {
+                var datum = Tweet.StreamStatuses(new TwitterConfig(oauthToken, oauthTokenSecret, oauthCustomerKey, oauthConsumerSecret,
+                    keywords)).Select(tweet => Sentiment.ComputeScore(tweet, keywords)).Select(tweet => new Payload { CreatedAt = tweet.CreatedAt, Topic = tweet.Topic, SentimentScore = tweet.SentimentScore, Text = tweet.Text, Location = tweet.Location, sentiment = tweet.Sentiment, ProfileImageUrl = tweet.ProfileImageUrl, hashtags = tweet.hashtag });
+                datum.ToObservable().Subscribe(myEventHubObserver);
+            }
+            catch
+            { }
            
 
         }
